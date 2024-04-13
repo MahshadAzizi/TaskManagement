@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  db:
+    container_name: task-postgres
+    image: postgres
+    env_file:
+      - db.env
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    ports:
+      - "5437:5432"
+
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      timeout: 1s
+      retries: 3
+
+  backend:
+    build: .
+    container_name: task-api
+    command: sh -c "python manage.py makemigrations &&
+                    python manage.py migrate &&
+                    python manage.py runserver 0.0.0.0:8000 --noreload"
+
+    ports:
+      - "9000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+         condition: service_healthy
+
+    restart: unless-stopped
+
+volumes:
+  db_data:
